@@ -7,7 +7,7 @@
 
 <script>
 export default {
-  name: 'Hello',
+  name: 'Setting',
   data () {
     return {
       msg: 'Welcome to Your mobile-base-project App'
