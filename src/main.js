@@ -6,12 +6,14 @@ import Vuex from 'vuex'
 import router from './router'
 import axios from 'axios'
 import FastClick from 'fastclick'
+import * as echarts from 'echarts'
 import './assets/css/reset.scss'
 
 Vue.use(Vuex)
 
 FastClick.attach(document.body)
 Vue.prototype.axios = axios
+Vue.prototype.echarts = echarts
 
 Vue.config.productionTip = false
 
