@@ -23,6 +23,7 @@
         </div>
       </div>
     </card>
+    <notice-bar></notice-bar>
     <card style="margin-top: 0px;">
       <div slot="content" class="card-demo-content card-content">
         <div class="cart-img">
@@ -48,11 +49,13 @@
 </template>
 <script>
 import { Divider, Card } from 'vux'
+import NoticeBar from '../components/NoticeBar'
 
 export default {
   components: {
     Card,
-    Divider
+    Divider,
+    NoticeBar
   },
   data () {
     return {
