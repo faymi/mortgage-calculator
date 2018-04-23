@@ -62,7 +62,9 @@ export default {
     let getMortgageTendency = (start, end) => {
       let mortgageTendencyList = []
       for (let i = start; i <= end; i = i + 0.5) {
-        let item = `${i}成`
+        let item = {}
+        item.value = `${i}成`
+        item.key = i * 0.1
         mortgageTendencyList.push(item)
       }
       return mortgageTendencyList.reverse()
@@ -70,7 +72,9 @@ export default {
     let getMortgageYearList = year => {
       let mortgageYearList = []
       for (let i = 1; i <= year; i++) {
-        let item = `${i}年（${12 * i}期）`
+        let item = {}
+        item.value = `${i}年（${12 * i}期）`
+        item.key = 12 * i
         mortgageYearList.push(item)
       }
       return mortgageYearList.reverse()
@@ -81,9 +85,9 @@ export default {
       loanCategoryList: [{key: 0, value: '商业贷款'}, {key: 1, value: '公积金贷款'}, {key: 2, value: '组合型贷款'}],
       calculationMethod: 0,
       calculationMethodList: [{key: 0, value: '根据面积、单价计算'}, {key: 1, value: '根据贷款总额计算'}],
-      mortgageTendency: getMortgageTendency(2, 8)[0], // 按揭成数
+      mortgageTendency: getMortgageTendency(2, 8)[0].key, // 按揭成数
       mortgageTendencyList: getMortgageTendency(2, 8),
-      mortgageYear: getMortgageYearList(25)[0], // 按揭年数
+      mortgageYear: getMortgageYearList(25)[0].key, // 按揭年数
       mortgageYearList: getMortgageYearList(25),
       lendingRate: '基准利率', // 贷款利率
       lendingRateList: ['基准利率', '7折', '85折', '88折', '9折', '95折', '1.05倍', '1.1倍', '1.2倍', '1.3倍'],
@@ -104,13 +108,42 @@ export default {
   },
   methods: {
     save () {
-      console.log(this.monthlyReturnB(3000000, 0.0747, 240, 0.8))
+      let total
+      let rate
+      let month
+      let tendency
+      total = !this.combinatorialShow && this.calculationByTotal ? this.totalLoanAmount * 10000 : this.roomPrice * this.roomArea
+      rate = (this.combinatorialShow || this.loanCategory === 0) ? this.lendingRateIpt : this.fundRateIpt
+      month = this.mortgageYear
+      tendency = !this.combinatorialShow && this.calculationByTotal ? 1 : this.mortgageTendency
+
+      console.log(total + '==' + rate + '==' + month + '==' + tendency)
+      if (this.repaymentType === 0) { // 等额本息
+        console.log(this.monthlyReturnA(total, rate, month, tendency))
+      } else { // 等额本金
+        console.log(this.monthlyReturnB(total, rate, month, tendency))
+      }
     },
     // 等额本息还款
     // 计划月还款额 =（贷款本金 × 月利率 ×（1 + 月利率）^ 还款月数）÷（（1+月利率）^ 还款月数 － 1）
-    monthlyReturnA (total, rate, month) {
+    monthlyReturnA (total, rate, month, tendency = 1) {
       let monthlyRate = rate / 12 // 月利率
-      return total * monthlyRate * Math.pow((1 + monthlyRate), month) / (Math.pow((1 + monthlyRate), month) - 1)
+      let firstPay = total * (1 - tendency)
+      let loanSum = total - firstPay
+      let monthlyPay = loanSum * monthlyRate * Math.pow((1 + monthlyRate), month) / (Math.pow((1 + monthlyRate), month) - 1)
+      let allTotal = monthlyPay * month
+      let interestRate = allTotal - loanSum
+      let monthReturnList = new Array(month).fill(monthlyPay)
+
+      return {
+        month,
+        firstPay, // 首付
+        monthlyPay, // 每月月供
+        allTotal, // 还款总额
+        interestRate, // 支付总利息
+        loanSum, // 贷款总额
+        monthReturnList
+      }
     },
     // 等额本金还款
     // 计划月还款额 =（贷款本金 ÷ 还款月数）+ （贷款本金 - 累计已还本金）× 月利率
@@ -136,10 +169,12 @@ export default {
       allTotal = allTotalList.reduce((preVal, curVal) => {
         return preVal + curVal
       })
+      console.log(allTotalList)
       interestRate = allTotal - loanSum
       firstMonthPay = monthReturnList[0].monthlyReturn
 
       return {
+        month,
         firstPay, // 首付
         firstMonthPay, // 首月月供
         allTotal, // 还款总额
