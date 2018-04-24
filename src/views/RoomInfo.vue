@@ -3,13 +3,13 @@
 	   <card>
       <div slot="header" class="header-wrap">
         <h3>下月月供</h3>
-        <h3>￥10000.00</h3>
+        <h3>￥{{calculationData.monthlyPay}}</h3>
         <h3 class="total">
           <div class="total-left">
-            剩余贷款：￥81122.00
+            剩余贷款：￥{{calculationData.allTotal}}
           </div>
           <div class="total-right">
-            剩余3年8月
+            剩余{{parseInt(calculationData.month / 12)}}年{{parseInt(calculationData.month % 12) === 0 ? '' : parseInt(calculationData.month % 12) + '月'}}
           </div>
         </h3>
       </div>
@@ -29,8 +29,8 @@
       <div class="tendency-header">还款比例</div>
       <div class="proportion">
         <div class="proportion-left">
-          <h3>本金：xxx</h3>
-          <h3>利息：xxx</h3>
+          <h3>本金：{{calculationData.loanSum}}</h3>
+          <h3>利息：{{calculationData.totalInterest}}</h3>
           <h3>利息浮动：xxx</h3>
         </div>
         <div class="proportion-right">
@@ -45,6 +45,7 @@
 </template>
 <script>
 import { Divider, Card } from 'vux'
+import {mapGetters} from 'vuex'
 
 export default {
   components: {
@@ -129,6 +130,11 @@ export default {
       }
     }
   },
+  computed: {
+    ...mapGetters({
+      calculationData: 'calculationData'
+    })
+  },
   methods: {
     initEchart () {
       this.myChart = this.echarts.init(document.getElementById('tendency-echartBox'))
@@ -142,6 +148,24 @@ export default {
   mounted () {
     this.initEchart()
     this.initProportionEchart()
+  },
+  activated () {
+    let _this = this
+    if (this.calculationData.monthList) {
+      this.myChart.setOption({
+        xAxis: {
+          data: _this.calculationData.monthList
+        },
+        series: [
+          {
+            name: '月供',
+            type: 'line',
+            stack: '总量',
+            data: _this.calculationData.monthReturnList
+          }
+        ]
+      })
+    }
   }
 }
 </script>

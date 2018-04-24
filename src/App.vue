@@ -42,6 +42,8 @@
 
 <script>
 import { Drawer, XHeader, Group, Cell, ViewBox } from 'vux'
+import {mapGetters} from 'vuex'
+
 export default {
   name: 'app',
   components: {
@@ -79,11 +81,15 @@ export default {
       if (this.$route.path === '/') return '首页'
       if (this.$route.path === '/roomInfo') return '房屋信息'
       if (this.$route.path === '/setting') return '设置'
-    }
+    },
+    ...mapGetters({
+      calculationData: 'calculationData'
+    })
   },
   mounted () {
     // IOS绑定touchstart事件才能使元素的:active生效
     document.body.addEventListener('touchstart', function () {})
+    !this.calculationData.monthList || this.calculationData.monthList.length === 0 ? this.$router.push({path: '/setting'}) : this.$router.push({path: '/'})
   },
   watch: {
     '$route' (to, from) {

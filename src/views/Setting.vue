@@ -36,7 +36,7 @@
     </group>
     <div class="rate-tips">
       <span style="color: #f74c31">*</span>
-      <span>贷款利率已经更新至2018年1月1日</span>
+      <span>贷款利率已经更新至2015年10月24日</span>
     </div>
     <div class="button-cls">
       <x-button type="primary" @click.native="save">保存</x-button>
@@ -79,6 +79,39 @@ export default {
       }
       return mortgageYearList.reverse()
     }
+    let getRateList = () => {
+      return [{
+        value: '基准利率',
+        key: '1'
+      }, {
+        value: '7折',
+        key: '0.7'
+      }, {
+        value: '85折',
+        key: '0.85'
+      }, {
+        value: '88折',
+        key: '0.88'
+      }, {
+        value: '9折',
+        key: '0.9'
+      }, {
+        value: '95折',
+        key: '0.95'
+      }, {
+        value: '1.05倍',
+        key: '1.05'
+      }, {
+        value: '1.1倍',
+        key: '1.1'
+      }, {
+        value: '1.2倍',
+        key: '1.2'
+      }, {
+        value: '1.3倍',
+        key: '1.3'
+      }]
+    }
     return {
       totalLoanAmount: '',
       loanCategory: 0,
@@ -89,12 +122,14 @@ export default {
       mortgageTendencyList: getMortgageTendency(2, 8),
       mortgageYear: getMortgageYearList(25)[0].key, // 按揭年数
       mortgageYearList: getMortgageYearList(25),
-      lendingRate: '基准利率', // 贷款利率
-      lendingRateList: ['基准利率', '7折', '85折', '88折', '9折', '95折', '1.05倍', '1.1倍', '1.2倍', '1.3倍'],
+      lendingRate: getRateList()[0].key, // 贷款利率
+      lendingRateList: getRateList(),
       lendingRateIpt: 4.9,
-      fundRate: '基准利率',
-      fundRateList: ['基准利率', '7折', '85折', '88折', '9折', '95折', '1.05倍', '1.1倍', '1.2倍', '1.3倍'],
-      fundRateIpt: 3.29,
+      lendingBaseRate: 4.9,
+      fundRate: getRateList()[0].key,
+      fundRateList: getRateList(),
+      fundRateIpt: 3.25,
+      fundBaseRate: 3.25,
       roomPrice: '',
       roomArea: '',
       commercialLoanAmount: '',
@@ -113,16 +148,31 @@ export default {
       let month
       let tendency
       total = !this.combinatorialShow && this.calculationByTotal ? this.totalLoanAmount * 10000 : this.roomPrice * this.roomArea
-      rate = (this.combinatorialShow || this.loanCategory === 0) ? this.lendingRateIpt : this.fundRateIpt
+      rate = (this.combinatorialShow || this.loanCategory === 0) ? this.lendingRateIpt * 0.01 : this.fundRateIpt * 0.01
       month = this.mortgageYear
       tendency = !this.combinatorialShow && this.calculationByTotal ? 1 : this.mortgageTendency
-
-      console.log(total + '==' + rate + '==' + month + '==' + tendency)
-      if (this.repaymentType === 0) { // 等额本息
-        console.log(this.monthlyReturnA(total, rate, month, tendency))
-      } else { // 等额本金
-        console.log(this.monthlyReturnB(total, rate, month, tendency))
+      let monthList = []
+      let now = new Date()
+      let nowYear = now.getFullYear()
+      let nowMonth = now.getMonth()
+      for (let i = 0; i < month; i++) {
+        nowMonth++
+        if (nowMonth > 12) {
+          nowYear++
+          nowMonth = 1
+        }
+        monthList.push([nowYear, nowMonth, '01'].join('/'))
       }
+
+      let mainData = {}
+      if (this.repaymentType === 0) { // 等额本息
+        mainData = this.monthlyReturnA(total, rate, month, tendency)
+      } else { // 等额本金
+        mainData = this.monthlyReturnB(total, rate, month, tendency)
+      }
+      mainData.monthList = monthList
+      this.$store.dispatch('setCalculationData', mainData)
+      this.$router.push({path: '/roomInfo'})
     },
     // 等额本息还款
     // 计划月还款额 =（贷款本金 × 月利率 ×（1 + 月利率）^ 还款月数）÷（（1+月利率）^ 还款月数 － 1）
@@ -132,16 +182,16 @@ export default {
       let loanSum = total - firstPay
       let monthlyPay = loanSum * monthlyRate * Math.pow((1 + monthlyRate), month) / (Math.pow((1 + monthlyRate), month) - 1)
       let allTotal = monthlyPay * month
-      let interestRate = allTotal - loanSum
-      let monthReturnList = new Array(month).fill(monthlyPay)
+      let totalInterest = allTotal - loanSum
+      let monthReturnList = new Array(month).fill(Math.round(monthlyPay))
 
       return {
         month,
-        firstPay, // 首付
-        monthlyPay, // 每月月供
-        allTotal, // 还款总额
-        interestRate, // 支付总利息
-        loanSum, // 贷款总额
+        firstPay: Math.round(firstPay), // 首付
+        monthlyPay: Math.round(monthlyPay), // 每月月供
+        allTotal: Math.round(allTotal), // 还款总额
+        totalInterest: Math.round(totalInterest), // 支付总利息
+        loanSum: Math.round(loanSum), // 贷款总额
         monthReturnList
       }
     },
@@ -154,13 +204,13 @@ export default {
       let allTotalList = []
       let monthReturnList = [] // 月供数组
       let allTotal
-      let interestRate
+      let totalInterest
       let firstPay = total * (1 - tendency)
       let firstMonthPay
       let loanSum = total - firstPay
       for (let i = 0; i < month; i++) {
         let hadReturn = i * loanSum / month
-        allTotalList.push((loanSum / month) + (loanSum - hadReturn) * monthlyRate)
+        allTotalList.push(Math.round((loanSum / month) + (loanSum - hadReturn) * monthlyRate))
         let item = {}
         item.monthlyReturn = (loanSum / month) + (loanSum - hadReturn) * monthlyRate
         item.month = i + 1
@@ -169,18 +219,17 @@ export default {
       allTotal = allTotalList.reduce((preVal, curVal) => {
         return preVal + curVal
       })
-      console.log(allTotalList)
-      interestRate = allTotal - loanSum
+      totalInterest = allTotal - loanSum
       firstMonthPay = monthReturnList[0].monthlyReturn
 
       return {
         month,
-        firstPay, // 首付
-        firstMonthPay, // 首月月供
-        allTotal, // 还款总额
-        interestRate, // 支付总利息
-        loanSum, // 贷款总额
-        monthReturnList
+        firstPay: Math.round(firstPay), // 首付
+        firstMonthPay: Math.round(firstMonthPay), // 首月月供
+        allTotal: Math.round(allTotal), // 还款总额
+        totalInterest: Math.round(totalInterest), // 支付总利息
+        loanSum: Math.round(loanSum), // 贷款总额
+        monthReturnList: allTotalList
       }
     }
   },
@@ -190,6 +239,12 @@ export default {
     },
     calculationMethod (newVal, oldVal) {
       this.calculationByTotal = newVal === 1
+    },
+    lendingRate (newVal, oldVal) {
+      this.lendingRateIpt = this.lendingBaseRate * newVal
+    },
+    fundRate (newVal, oldVal) {
+      this.fundRateIpt = this.fundBaseRate * newVal
     }
   }
 }
