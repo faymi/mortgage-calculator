@@ -3,21 +3,21 @@
 	   <card>
       <div slot="header" class="header-wrap">
         <h3>下月月供</h3>
-        <h3>￥10000.00</h3>
+        <h3>￥{{nextMonthPay | toFix}}</h3>
       </div>
       <div slot="content" class="card-demo-flex card-demo-content">
         <div class="vux-1px-r">
-          <span>1130</span>
+          <span>{{surplusCapital | toFix}}</span>
           <br/>
           剩余本金
         </div>
         <div class="vux-1px-r">
-          <span>15</span>
+          <span>{{surplusInterest | toFix}}</span>
           <br/>
           剩余利息
         </div>
         <div class="vux-1px-r">
-          <span>0</span>
+          <span>{{surplusReturn | toFix}}</span>
           <br/>
           剩余总额
         </div>
@@ -32,8 +32,8 @@
         <div class="cart-cont">
           <div class="cart-cont-up">广州萝岗某宅</div>
           <div class="cart-cont-down">
-            <div class="cart-cont-down-date">剩余3年8月</div>
-            <div class="cart-cont-down-total">￥10000.00</div>
+            <div class="cart-cont-down-date">剩余{{surplusMonth}}</div>
+            <div class="cart-cont-down-total">￥{{calculationData.loanSum | toFix}}</div>
           </div>
         </div>
       </div>
@@ -49,6 +49,7 @@
 </template>
 <script>
 import { Divider, Card } from 'vux'
+import {mapGetters} from 'vuex'
 import NoticeBar from '../components/NoticeBar'
 
 export default {
@@ -59,6 +60,11 @@ export default {
   },
   data () {
     return {
+      nextMonthPay: 0,
+      surplusReturn: 0,
+      surplusCapital: 0,
+      surplusInterest: 0,
+      surplusMonth: '',
       myChart: {},
       options: {
         tooltip: {
@@ -81,30 +87,39 @@ export default {
         xAxis: {
           type: 'category',
           boundaryGap: false,
-          data: ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+          data: []
         },
         yAxis: {
           type: 'value',
           axisLabel: {
-            formatter: '{value}'
+            formatter: function (value, index) {
+              if (value < 10000) {
+                return value
+              } else {
+                return [value / 10000, '万'].join('')
+              }
+            }
           }
         },
         series: [
           {
-            name: '邮件营销',
+            name: '月供',
             type: 'line',
-            stack: '总量',
-            data: [120, 132, 101, 134, 90, 230, 210]
+            data: []
           },
           {
-            name: '联盟广告',
+            name: '月利息',
             type: 'line',
-            stack: '总量',
-            data: [220, 182, 191, 234, 290, 330, 310]
+            data: []
           }
         ]
       }
     }
+  },
+  computed: {
+    ...mapGetters({
+      calculationData: 'calculationData'
+    })
   },
   methods: {
     initEchart () {
@@ -114,6 +129,44 @@ export default {
   },
   mounted () {
     this.initEchart()
+  },
+  activated () {
+    let _this = this
+    // 更新统计图数据
+    if (this.calculationData.monthList) {
+      this.myChart.setOption({
+        xAxis: {
+          data: _this.calculationData.monthList
+        },
+        series: [
+          {
+            name: '月供',
+            data: _this.calculationData.monthReturnList
+          },
+          {
+            name: '月利息',
+            data: _this.calculationData.monthlyInterestList
+          }
+        ]
+      })
+    }
+
+    let now = new Date()
+    let nowTime = [now.getFullYear(), now.getMonth() + 1, '01'].join('/')
+    let index = this.calculationData.monthList.indexOf(nowTime)
+    index !== -1 ? this.nextMonthPay = this.calculationData.monthReturnList[index + 1] : this.nextMonthPay = 0
+    index !== -1 ? this.surplusReturn = this.calculationData.monthReturnList.slice(index + 1).reduce((preVal, curVal) => {
+      return preVal + curVal
+    }) : this.surplusReturn = 0
+    index !== -1 ? this.surplusInterest = this.calculationData.monthlyInterestList.slice(index + 1).reduce((preVal, curVal) => {
+      return preVal + curVal
+    }) : this.surplusInterest = 0
+    index !== -1 ? this.surplusMonth = `${parseInt((this.calculationData.month - (index + 1)) / 12)}年${((this.calculationData.month - (index + 1)) % 12) === 0 ? '' : parseInt((this.calculationData.month - (index + 1)) % 12)}月` : this.surplusMonth = 0
+    let surplusCapitalStorage = window.localStorage.getItem('surplusCapitalStorage')
+    index !== -1 ? (typeof this.calculationData.capital !== 'function' ? this.surplusCapital = Number(surplusCapitalStorage) : this.surplusCapital = this.calculationData.capital(index + 1).slice(index + 1).reduce((preVal, curVal) => {
+      return preVal + curVal
+    })) : this.surplusCapital = 0
+    window.localStorage.setItem('surplusCapitalStorage', this.surplusCapital)
   }
 }
 </script>

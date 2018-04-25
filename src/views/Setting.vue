@@ -176,6 +176,7 @@ export default {
     },
     // 等额本息还款
     // 计划月还款额 =（贷款本金 × 月利率 ×（1 + 月利率）^ 还款月数）÷（（1+月利率）^ 还款月数 － 1）
+    // 每月应还本金 = 贷款本金 × 月利率 × （1+月利率）^ （还款月序号 - 1）÷（（1 + 月利率 ）^ 还款月数 - 1）
     monthlyReturnA (total, rate, month, tendency = 1) {
       let monthlyRate = rate / 12 // 月利率
       let firstPay = total * (1 - tendency)
@@ -184,6 +185,15 @@ export default {
       let allTotal = monthlyPay * month
       let totalInterest = allTotal - loanSum
       let monthReturnList = new Array(month).fill(Math.round(monthlyPay))
+      let monthlyInterest = Math.round(totalInterest / month)
+      let monthlyInterestList = new Array(month).fill(Math.round(monthlyInterest))
+      let capital = monthNum => {
+        let capitalList = []
+        for (let i = 0; i < (month - monthNum); i++) {
+          capitalList.push(Math.round(loanSum * monthlyRate * Math.pow((1 + monthlyRate), monthNum) / (Math.pow((1 + monthlyRate), month) - 1)))
+        }
+        return capitalList
+      }
 
       return {
         month,
@@ -191,7 +201,9 @@ export default {
         monthlyPay: Math.round(monthlyPay), // 每月月供
         allTotal: Math.round(allTotal), // 还款总额
         totalInterest: Math.round(totalInterest), // 支付总利息
-        loanSum: Math.round(loanSum), // 贷款总额
+        monthlyInterestList, // 每月利息
+        loanSum: Math.round(loanSum), // 贷款总额,
+        capital, // 每月应还本金
         monthReturnList
       }
     },
@@ -199,20 +211,24 @@ export default {
     // 计划月还款额 =（贷款本金 ÷ 还款月数）+ （贷款本金 - 累计已还本金）× 月利率
     // 累计已还本金 = 已经归还贷款的月数 × 贷款本金 ÷ 还款月数
     // total: 贷款本金 rate：年利率 month：还款月数 tendency：按揭成数
+    // 每月应还本金 = 贷款本金 ÷ 还款月数
     monthlyReturnB (total, rate, month, tendency = 1) {
       let monthlyRate = rate / 12 // 月利率
       let allTotalList = []
       let monthReturnList = [] // 月供数组
       let allTotal
       let totalInterest
+      let monthlyInterestList = []
       let firstPay = total * (1 - tendency)
       let firstMonthPay
       let loanSum = total - firstPay
       for (let i = 0; i < month; i++) {
         let hadReturn = i * loanSum / month
-        allTotalList.push(Math.round((loanSum / month) + (loanSum - hadReturn) * monthlyRate))
+        let monthlyInterest = (loanSum - hadReturn) * monthlyRate
+        monthlyInterestList.push(Math.round(monthlyInterest))
+        allTotalList.push(Math.round((loanSum / month) + monthlyInterest))
         let item = {}
-        item.monthlyReturn = (loanSum / month) + (loanSum - hadReturn) * monthlyRate
+        item.monthlyReturn = (loanSum / month) + monthlyInterest
         item.month = i + 1
         monthReturnList.push(item)
       }
@@ -221,6 +237,9 @@ export default {
       })
       totalInterest = allTotal - loanSum
       firstMonthPay = monthReturnList[0].monthlyReturn
+      let capital = monthNum => {
+        return new Array(month).fill(Math.round(loanSum / month))
+      }
 
       return {
         month,
@@ -228,7 +247,9 @@ export default {
         firstMonthPay: Math.round(firstMonthPay), // 首月月供
         allTotal: Math.round(allTotal), // 还款总额
         totalInterest: Math.round(totalInterest), // 支付总利息
+        monthlyInterestList, // 每月利息
         loanSum: Math.round(loanSum), // 贷款总额
+        capital, // 每月应还本金
         monthReturnList: allTotalList
       }
     }

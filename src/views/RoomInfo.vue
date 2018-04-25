@@ -3,13 +3,13 @@
 	   <card>
       <div slot="header" class="header-wrap">
         <h3>下月月供</h3>
-        <h3>￥{{calculationData.monthlyPay}}</h3>
+        <h3>￥{{nextMonthPay | toFix}}</h3>
         <h3 class="total">
           <div class="total-left">
-            剩余贷款：￥{{calculationData.allTotal}}
+            剩余贷款：￥{{surplusReturn | toFix}}
           </div>
           <div class="total-right">
-            剩余{{parseInt(calculationData.month / 12)}}年{{parseInt(calculationData.month % 12) === 0 ? '' : parseInt(calculationData.month % 12) + '月'}}
+            剩余{{surplusMonth}}
           </div>
         </h3>
       </div>
@@ -29,9 +29,9 @@
       <div class="tendency-header">还款比例</div>
       <div class="proportion">
         <div class="proportion-left">
-          <h3>本金：{{calculationData.loanSum}}</h3>
-          <h3>利息：{{calculationData.totalInterest}}</h3>
-          <h3>利息浮动：xxx</h3>
+          <h3>本金：{{calculationData.loanSum | toFix}}</h3>
+          <h3>利息：{{calculationData.totalInterest | toFix}}</h3>
+          <h3>利息浮动：16810.00</h3>
         </div>
         <div class="proportion-right">
           <div class="echart-wrap">
@@ -54,6 +54,9 @@ export default {
   },
   data () {
     return {
+      nextMonthPay: 0,
+      surplusReturn: 0,
+      surplusMonth: '',
       myChart: {},
       options: {
         tooltip: {
@@ -76,26 +79,30 @@ export default {
         xAxis: {
           type: 'category',
           boundaryGap: false,
-          data: ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+          data: []
         },
         yAxis: {
           type: 'value',
           axisLabel: {
-            formatter: '{value}'
+            formatter: function (value, index) {
+              if (value < 10000) {
+                return value
+              } else {
+                return [value / 10000, '万'].join('')
+              }
+            }
           }
         },
         series: [
           {
-            name: '邮件营销',
+            name: '月供',
             type: 'line',
-            stack: '总量',
-            data: [120, 132, 101, 134, 90, 230, 210]
+            data: []
           },
           {
-            name: '联盟广告',
+            name: '月利息',
             type: 'line',
-            stack: '总量',
-            data: [220, 182, 191, 234, 290, 330, 310]
+            data: []
           }
         ]
       },
@@ -107,16 +114,14 @@ export default {
         },
         series: [
           {
-            name: '访问来源',
+            name: '还款比例',
             type: 'pie',
             radius: '55%',
             center: ['50%', '60%'],
             data: [
-              {value: 335, name: '直接访问'},
-              {value: 310, name: '邮件营销'},
-              {value: 234, name: '联盟广告'},
-              {value: 135, name: '视频广告'},
-              {value: 1548, name: '搜索引擎'}
+              {value: 0, name: '本金'},
+              {value: 0, name: '利息'},
+              {value: 0, name: '利息浮动'}
             ],
             itemStyle: {
               emphasis: {
@@ -146,11 +151,12 @@ export default {
     }
   },
   mounted () {
-    this.initEchart()
-    this.initProportionEchart()
+    this.initEchart() // 扇形图初始化
+    this.initProportionEchart() // 折线图初始化
   },
   activated () {
     let _this = this
+    // 更新统计图数据
     if (this.calculationData.monthList) {
       this.myChart.setOption({
         xAxis: {
@@ -159,13 +165,36 @@ export default {
         series: [
           {
             name: '月供',
-            type: 'line',
-            stack: '总量',
             data: _this.calculationData.monthReturnList
+          },
+          {
+            name: '月利息',
+            data: _this.calculationData.monthlyInterestList
+          }
+        ]
+      })
+      this.proportionEchart.setOption({
+        series: [
+          {
+            name: '还款比例',
+            data: [
+              {value: _this.calculationData.loanSum, name: '本金'},
+              {value: _this.calculationData.totalInterest, name: '利息'},
+              {value: 16810.00, name: '利息浮动'}
+            ]
           }
         ]
       })
     }
+
+    let now = new Date()
+    let nowTime = [now.getFullYear(), now.getMonth() + 1, '01'].join('/')
+    let index = this.calculationData.monthList.indexOf(nowTime)
+    index !== -1 ? this.nextMonthPay = this.calculationData.monthReturnList[index + 1] : this.nextMonthPay = 0
+    index !== -1 ? this.surplusReturn = this.calculationData.monthReturnList.slice(index + 1).reduce((preVal, curVal) => {
+      return preVal + curVal
+    }) : this.surplusReturn = 0
+    index !== -1 ? this.surplusMonth = `${parseInt((this.calculationData.month - (index + 1)) / 12)}年${((this.calculationData.month - (index + 1)) % 12) === 0 ? '' : parseInt((this.calculationData.month - (index + 1)) % 12)}月` : this.surplusMonth = 0
   }
 }
 </script>
@@ -221,10 +250,10 @@ export default {
   width: 100%;
   height: 100%;
   display: flex;
-  justify-content: flex-start;
   height: 240px;
   margin-top: -60px;
   #tendency-echartBox, #proportion-echartBox {
+    margin: 0 auto;
     width: 100%;
     height: 100%;
   }

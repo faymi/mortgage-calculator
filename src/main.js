@@ -18,6 +18,10 @@ Vue.prototype.echarts = echarts
 
 Vue.config.productionTip = false
 
+Vue.filter('toFix', function (value) {
+  return value.toFixed(2)
+})
+
 /* eslint-disable no-new */
 new Vue({
   el: '#app',
