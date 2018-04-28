@@ -1,6 +1,8 @@
 # 房贷计算器
 ## 前言 ##
 房贷计算器
+
+*手机预览地址：* http://count.eseeto.com
 ## 技术栈 ##
 
 前端：vue2 + vux + vuex + vue-router + ES6 + webpack + flexible.js(rem移动端适配) + ECharts + less + sass

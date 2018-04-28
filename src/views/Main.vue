@@ -134,6 +134,9 @@ export default {
     let _this = this
     // 更新统计图数据
     if (this.calculationData.monthList) {
+      if (this.myChart.id === undefined) {
+        this.initEchart()
+      }
       this.myChart.setOption({
         xAxis: {
           data: _this.calculationData.monthList
