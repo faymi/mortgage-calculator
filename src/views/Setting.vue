@@ -165,10 +165,18 @@ export default {
       }
 
       let mainData = {}
-      if (this.repaymentType === 0) { // 等额本息
-        mainData = this.monthlyReturnA(total, rate, month, tendency)
-      } else { // 等额本金
-        mainData = this.monthlyReturnB(total, rate, month, tendency)
+      if (this.loanCategory === 2) {
+        let totalA = this.commercialLoanAmount * 10000
+        let totalB = this.fundLoanAmount * 10000
+        let rateA = this.lendingRateIpt * 0.01
+        let rateB = this.fundRateIpt * 0.01
+        mainData = this.combinatorial(totalA, totalB, rateA, rateB, month)
+      } else {
+        if (this.repaymentType === 0) { // 等额本息
+          mainData = this.monthlyReturnA(total, rate, month, tendency)
+        } else { // 等额本金
+          mainData = this.monthlyReturnB(total, rate, month, tendency)
+        }
       }
       mainData.monthList = monthList
       this.$store.dispatch('setCalculationData', mainData)
@@ -251,6 +259,44 @@ export default {
         loanSum: Math.round(loanSum), // 贷款总额
         capital, // 每月应还本金
         monthReturnList: allTotalList
+      }
+    },
+    // 组合型贷款
+    combinatorial (totalA, totalB, rateA, rateB, month) {
+      let lendingLoan = {}
+      let fundLoan = {}
+      if (this.repaymentType === 0) { // 等额本息
+        lendingLoan = this.monthlyReturnA(totalA, rateA, month)
+        fundLoan = this.monthlyReturnA(totalB, rateB, month)
+      } else { // 等额本金
+        lendingLoan = this.monthlyReturnB(totalA, rateA, month)
+        fundLoan = this.monthlyReturnB(totalA, rateA, month)
+      }
+      let monthlyPay = lendingLoan.monthlyPay + fundLoan.monthlyPay
+      let allTotal = lendingLoan.allTotal + fundLoan.allTotal
+      let totalInterest = lendingLoan.totalInterest + fundLoan.totalInterest
+      let loanSum = lendingLoan.loanSum + fundLoan.loanSum
+      let capital = lendingLoan.capital + fundLoan.capital
+      let monthlyInterestListA = lendingLoan.monthlyInterestList
+      let monthlyInterestListB = fundLoan.monthlyInterestList
+      let monthReturnListA = lendingLoan.monthReturnList
+      let monthReturnListB = fundLoan.monthReturnList
+      let newMonthlyInterestList = []
+      let newMonthReturnList = []
+      for (let i = 0; i < monthlyInterestListA.length; i++) {
+        newMonthlyInterestList.push(monthlyInterestListA[i] + monthlyInterestListB[i])
+        newMonthReturnList.push(monthReturnListA[i] + monthReturnListB[i])
+      }
+
+      return {
+        month,
+        monthlyPay: Math.round(monthlyPay), // 每月月供
+        allTotal: Math.round(allTotal), // 还款总额
+        totalInterest: Math.round(totalInterest), // 支付总利息
+        loanSum: Math.round(loanSum), // 贷款总额
+        capital, // 每月应还本金
+        monthlyInterestList: newMonthlyInterestList, // 每月利息
+        monthReturnList: newMonthReturnList
       }
     }
   },
